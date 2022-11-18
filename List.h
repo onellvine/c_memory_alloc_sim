@@ -311,4 +311,73 @@ BLOCK_T *merge(ELIST_T *free_block, BLOCK_T *block, char *logic)
     return prev;
 }
 
+BLOCK_T *coalesce(BLOCK_T *block)
+{
+    // coalesce the last block with the rest of the blocks
+    if(block->next = NULL)
+    {
+        size_t size = block->size / sizeof(WORD);
+        if(block->size % sizeof(WORD) > 0) size++;
+
+        while((size * sizeof(WORD)) % 8 > 0) size++;
+
+        if(block->payload_index + size < heap_size / sizeof(WORD))
+        {
+            size_t space = heap_size / sizeof(WORD) - block->payload_index;
+            block->size = space * sizeof(WORD);
+        }
+    }
+
+    ELIST_T *free_block = NULL;
+
+    if(block->free)
+    {
+        int merged = 0;
+        if(block->prev != NULL)
+        {
+            if(block->prev->free)
+            {
+                block = merge(free_block, block, "left");
+                merged = 1;
+            }
+        }
+        if(block->next != NULL)
+        {
+            if(block->next->free)
+            {
+                block = merge(free_block, block, "right");
+                merged = 1;
+            }
+        }
+
+        if(merged == 0)
+        {
+            if(list_type == 'E')
+            {
+                free_block = (ELIST_T *)malloc(sizeof(ELIST_T));
+                free_block->block = block;
+                free_block->prev = NULL;
+                free_block->next = exp_list;
+                exp_list->prev = free_block;
+                exp_list = free_block;
+            }
+        }
+    }
+
+    // update the heap
+    if(block->next != NULL)
+    {
+        size_t size = block->size / sizeof(WORD);
+        if(block->size % sizeof(WORD) > 0) size++;
+
+        while((size * sizeof(WORD)) % 8 > 0) size++;
+
+        int serial = (size - 1) * 4;
+        heap[block->payload_index - 1] = serial;
+        heap[block->payload_index + size - 3] = serial;        
+    }
+
+    return block;
+}
+
 #endif
