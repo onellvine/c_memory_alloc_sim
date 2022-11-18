@@ -3,8 +3,23 @@
 
 #include "List.h"
 
+void mysbrk(size_t size)
+{
+    if(heap_size + size + 8 > MAX_HEAP)
+    {
+        char *file_name = "output.txt";
+        FILE *fp = fopen(file_name, "W+");
+        fprintf(fp, "Error: Heap grew past 100000 WORDS.\n");
+        fclose(fp);
+        exit(EXIT_FAILURE);
+    }
 
-void myalloc(size_t size)
+    heap_size += (size + 8);
+
+    return;
+}
+
+void *myalloc(size_t size)
 {
     BLOCK_T *block = NULL;
 
@@ -130,4 +145,35 @@ void myalloc(size_t size)
     heap[block->payload_index + cap - 3] = serial;
 
     return &block->payload_index;
+}
+
+
+void myfree(void *ptr)
+{
+    BLOCK_T *block = ptr;
+    block->free = true;
+
+    coalesce(block);
+
+    return;
+}
+
+
+void *myrealloc(void *ptr, size_t size)
+{
+    void *p = myalloc(size);
+    BLOCK_T *block1 = p;
+    BLOCK_T *block2 = ptr;
+
+    int cap = block2->size / sizeof(WORD);
+    if(block2->size % sizeof(WORD) > 0) cap++;
+
+    while((cap * sizeof(WORD)) % 8 > 0) cap++;
+
+    for(int i = 0; i < cap; i++)
+        heap[block1->payload_index + i] = heap[block2->payload_index + i];
+
+    myfree(ptr);
+
+    return p;
 }
